@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>健身追踪 Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0f0f;--surface:#1a1a1a;--surface2:#242424;--surface3:#2e2e2e;
+  --border:#333;--border2:#444;
+  --text:#f0f0f0;--text2:#aaa;--text3:#666;
+  --green:#3dd68c;--green-dim:#1a4a32;
+  --blue:#60a5fa;--blue-dim:#1e3a5f;
+  --orange:#fb923c;--orange-dim:#4a2510;
+  --purple:#c084fc;--purple-dim:#3b1f5e;
+  --red:#f87171;--red-dim:#4a1a1a;
+  --radius:10px;--radius-sm:6px;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.5;min-height:100vh}
+.app{max-width:900px;margin:0 auto;padding:16px}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:0.5px solid var(--border)}
+.header-left h1{font-size:18px;font-weight:600}
+.header-left p{font-size:12px;color:var(--text3);margin-top:2px}
+.header-right{display:flex;gap:8px}
+.tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--surface);border-radius:var(--radius);padding:4px}
+.tab{flex:1;padding:8px 4px;border:none;background:transparent;color:var(--text2);font-size:13px;cursor:pointer;border-radius:var(--radius-sm);transition:all .15s;text-align:center}
+.tab.active{background:var(--surface3);color:var(--text)}
+.metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}
+@media(min-width:600px){.metrics{grid-template-columns:repeat(4,1fr)}}
+.metric-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+.metric-card .label{font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
+.metric-card .value{font-size:22px;font-weight:600}
+.metric-card .sub{font-size:11px;color:var(--text3);margin-top:3px}
+.metric-card.green .value{color:var(--green)}
+.metric-card.blue .value{color:var(--blue)}
+.metric-card.orange .value{color:var(--orange)}
+.metric-card.purple .value{color:var(--purple)}
+.section{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.section-title{font-size:13px;font-weight:500}
+.section-sub{font-size:11px;color:var(--text3)}
+textarea{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:10px 12px;font-size:13px;resize:none;font-family:inherit;line-height:1.5;margin-bottom:10px}
+textarea:focus{outline:none;border-color:var(--green)}
+textarea::placeholder{color:var(--text3)}
+.btn{padding:9px 16px;border-radius:var(--radius-sm);border:none;cursor:pointer;font-size:13px;font-weight:500;transition:opacity .15s;white-space:nowrap}
+.btn:active{opacity:.7}
+.btn-primary{background:var(--green);color:#000}
+.btn-ghost{background:var(--surface2);color:var(--text2);border:0.5px solid var(--border)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-row{display:flex;gap:8px;justify-content:flex-end}
+.log-list{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto}
+.log-item{background:var(--surface2);border-radius:var(--radius-sm);padding:10px 12px;display:flex;align-items:flex-start;gap:10px}
+.log-date{font-size:11px;color:var(--text3);min-width:42px;margin-top:1px;flex-shrink:0}
+.log-content{flex:1;min-width:0}
+.log-title{font-size:13px;font-weight:500}
+.log-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.tag{padding:2px 7px;border-radius:4px;font-size:11px;font-weight:500}
+.tag-green{background:var(--green-dim);color:var(--green)}
+.tag-blue{background:var(--blue-dim);color:var(--blue)}
+.tag-orange{background:var(--orange-dim);color:var(--orange)}
+.tag-purple{background:var(--purple-dim);color:var(--purple)}
+.tag-red{background:var(--red-dim);color:var(--red)}
+.log-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0 4px;line-height:1;flex-shrink:0}
+.log-del:hover{color:var(--red)}
+.muscle-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+@media(min-width:500px){.muscle-grid{grid-template-columns:repeat(6,1fr)}}
+.muscle-item{background:var(--surface2);border-radius:var(--radius-sm);padding:8px 6px;text-align:center}
+.muscle-count{font-size:18px;font-weight:600;color:var(--green)}
+.muscle-name{font-size:11px;color:var(--text3);margin-top:2px}
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:110px;padding-top:8px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.bar{width:100%;background:var(--green-dim);border-radius:3px 3px 0 0;transition:height .3s;min-height:2px}
+.bar.active{background:var(--green)}
+.bar-label{font-size:10px;color:var(--text3)}
+.bar-val{font-size:10px;color:var(--text2)}
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:500px){.stats-grid{grid-template-columns:repeat(3,1fr)}}
+.stat-item{background:var(--surface2);border-radius:var(--radius-sm);padding:10px 12px}
+.stat-label{font-size:11px;color:var(--text3);margin-bottom:4px}
+.stat-value{font-size:16px;font-weight:600}
+.stat-date{font-size:10px;color:var(--text3);margin-top:2px}
+.calorie-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.calorie-label{font-size:12px;color:var(--text2);width:50px;flex-shrink:0}
+.calorie-bar-wrap{flex:1;background:var(--surface2);border-radius:3px;height:8px;overflow:hidden}
+.calorie-bar-fill{height:100%;border-radius:3px;transition:width .4s}
+.calorie-val{font-size:12px;color:var(--text2);width:70px;text-align:right;flex-shrink:0}
+.divider{height:0.5px;background:var(--border);margin:14px 0}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.form-row.single{grid-template-columns:1fr}
+.form-group label{display:block;font-size:12px;color:var(--text3);margin-bottom:4px}
+.form-group input{width:100%;background:var(--surface2);border:0.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:8px 10px;font-size:13px}
+.form-group input:focus{outline:none;border-color:var(--green)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
+.modal{background:var(--surface);border:0.5px solid var(--border2);border-radius:var(--radius);padding:20px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto}
+.modal h2{font-size:15px;font-weight:600;margin-bottom:16px}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface3);border:0.5px solid var(--border2);color:var(--text);padding:10px 22px;border-radius:var(--radius);font-size:13px;z-index:200;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.empty{text-align:center;padding:32px 16px;color:var(--text3);font-size:13px}
+.empty-icon{font-size:28px;margin-bottom:8px}
+.ai-thinking{display:flex;align-items:center;gap:8px;color:var(--text3);font-size:13px;padding:8px 0}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
+.dot-anim span{display:inline-block;animation:bounce .9s infinite;font-size:18px}
+.dot-anim span:nth-child(2){animation-delay:.15s}
+.dot-anim span:nth-child(3){animation-delay:.3s}
+.trend-wrap{width:100%;overflow:hidden}
+.year-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-left">
+      <h1>健身追踪</h1>
+      <p id="today-date"></p>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-ghost btn-sm" onclick="showBodyModal()">记录体测</button>
+      <button class="btn btn-primary btn-sm" onclick="switchTab('workout');document.getElementById('workout-input').focus()">+ 训练</button>
+    </div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric-card green"><div class="label">本月训练</div><div class="value" id="m-count">0</div><div class="sub">次</div></div>
+    <div class="metric-card blue"><div class="label">本月频率</div><div class="value" id="m-freq">0.0</div><div class="sub">次/周</div></div>
+    <div class="metric-card orange"><div class="label">当前体重</div><div class="value" id="m-weight">--</div><div class="sub" id="m-weight-sub">未记录</div></div>
+    <div class="metric-card purple"><div class="label">今日热量</div><div class="value" id="m-cal">--</div><div class="sub">kcal</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('workout')">训练</button>
+    <button class="tab" onclick="switchTab('body')">体测</button>
+    <button class="tab" onclick="switchTab('calorie')">热量</button>
+    <button class="tab" onclick="switchTab('stats')">数据</button>
+  </div>
+
+  <!-- 训练 -->
+  <div id="tab-workout" class="tab-content active">
+    <div class="section">
+      <div class="section-header"><span class="section-title">记录今日训练</span><span class="section-sub">用自然语言描述</span></div>
+      <textarea id="workout-input" rows="2" placeholder="例：6.10 臀腿＋yoga  或  今天背＋zumba 练了1小时"></textarea>
+      <div id="ai-status"></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('workout-input').value=''">清空</button>
+        <button class="btn btn-primary" onclick="addWorkout()">AI 解析并保存</button>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-header"><span class="section-title">本月肌群分布</span><span class="section-sub" id="muscle-month-label"></span></div>
+      <div class="muscle-grid" id="muscle-grid"></div>
+    </div>
+    <div class="section">
+      <div class="section-header"><span class="section-title">近4周训练频率</span></div>
+      <div class="bar-chart" id="week-bars"></div>
+    </div>
+    <div class="section">
+      <div class="section-header"><span class="section-title">训练记录</span><span class="section-sub" id="log-count-label"></span></div>
+      <div class="log-list" id="workout-log"></div>
+    </div>
+  </div>
+
+  <!-- 体测 -->
+  <div id="tab-body" class="tab-content">
+    <div class="section">
+      <div class="section-header"><span class="section-title">最新体测</span><button class="btn btn-ghost btn-sm" onclick="showBodyModal()">+ 录入</button></div>
+      <div class="stats-grid" id="body-stats-grid"></div>
+    </div>
+    <div class="section"><div class="section-header"><span class="section-title">体重趋势</span></div><div class="trend-wrap" id="weight-trend"></div></div>
+    <div class="section"><div class="section-header"><span class="section-title">体脂率趋势</span></div><div class="trend-wrap" id="bf-trend"></div></div>
+    <div class="section">
+      <div class="section-header"><span class="section-title">历史记录</span></div>
+      <div class="log-list" id="body-log"></div>
+    </div>
+  </div>
+
+  <!-- 热量 -->
+  <div id="tab-calorie" class="tab-content">
+    <div class="section">
+      <div class="section-header"><span class="section-title">今日热量</span><span class="section-sub" id="cal-date-label"></span></div>
+      <div class="calorie-row">
+        <span class="calorie-label" style="color:var(--green)">摄入</span>
+        <div class="calorie-bar-wrap"><div class="calorie-bar-fill" id="intake-bar" style="background:var(--green);width:0%"></div></div>
+        <span class="calorie-val" id="intake-val">-- kcal</span>
+      </div>
+      <div class="calorie-row">
+        <span class="calorie-label" style="color:var(--orange)">消耗</span>
+        <div class="calorie-bar-wrap"><div class="calorie-bar-fill" id="burn-bar" style="background:var(--orange);width:0%"></div></div>
+        <span class="calorie-val" id="burn-val">-- kcal</span>
+      </div>
+      <div class="calorie-row">
+        <span class="calorie-label" style="color:var(--blue)">缺口</span>
+        <div class="calorie-bar-wrap"><div class="calorie-bar-fill" id="gap-bar" style="background:var(--blue);width:0%"></div></div>
+        <span class="calorie-val" id="gap-val">-- kcal</span>
+      </div>
+      <div class="divider"></div>
+      <div class="form-row">
+        <div class="form-group"><label>摄入热量 (kcal)</label><input type="number" id="cal-intake" placeholder="如 1800"></div>
+        <div class="form-group"><label>运动消耗 (kcal)</label><input type="number" id="cal-burn" placeholder="如 400"></div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group"><label>备注（可选）</label><input type="text" id="cal-note" placeholder="如 高蛋白饮食 + 有氧"></div>
+      </div>
+      <div class="btn-row"><button class="btn btn-primary btn-sm" onclick="saveCalorie()">保存今日</button></div>
+    </div>
+    <div class="section">
+      <div class="section-header"><span class="section-title">近7天热量</span></div>
+      <div style="position:relative;height:130px"><canvas id="calorie-chart" role="img" aria-label="近7天热量趋势">热量趋势图</canvas></div>
+    </div>
+    <div class="section">
+      <div class="section-header"><span class="section-title">历史记录</span></div>
+      <div class="log-list" id="calorie-log"></div>
+    </div>
+  </div>
+
+  <!-- 数据 -->
+  <div id="tab-stats" class="tab-content">
+    <div class="section"><div class="section-header"><span class="section-title">年度概览 2026</span></div><div class="year-grid" id="year-summary"></div></div>
+    <div class="section">
+      <div class="section-header"><span class="section-title">月度训练次数</span></div>
+      <div style="position:relative;height:150px"><canvas id="monthly-chart" role="img" aria-label="月度训练次数">月度统计</canvas></div>
+    </div>
+    <div class="section"><div class="section-header"><span class="section-title">全年肌群累计</span></div><div class="muscle-grid" id="year-muscle-grid"></div></div>
+  </div>
+</div>
+
+<!-- 体测弹窗 -->
+<div id="body-modal" class="modal-bg" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h2>录入体测数据</h2>
+    <div class="form-row">
+      <div class="form-group"><label>日期</label><input type="date" id="b-date"></div>
+      <div class="form-group"><label>体重 (kg)</label><input type="number" id="b-weight" step="0.1" placeholder="如 58.5"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>体脂率 (%)</label><input type="number" id="b-bf" step="0.1" placeholder="如 24.5"></div>
+      <div class="form-group"><label>骨骼肌量 (kg)</label><input type="number" id="b-muscle" step="0.1" placeholder="如 26.9"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>腰围 (cm)</label><input type="number" id="b-waist" step="0.1" placeholder="如 80.2"></div>
+      <div class="form-group"><label>臀围 (cm)</label><input type="number" id="b-hip" step="0.1" placeholder="如 96"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>BMI</label><input type="number" id="b-bmi" step="0.01" placeholder="如 24.6"></div>
+      <div class="form-group"><label>BMR (kcal)</label><input type="number" id="b-bmr" placeholder="如 1426"></div>
+    </div>
+    <div class="form-row single">
+      <div class="form-group"><label>备注（内脏脂肪等级等）</label><input type="text" id="b-note" placeholder="如 内脏脂肪7级，生理年龄24，BWI 8.0"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveBody()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ── 数据存储（localStorage）──
+const STORAGE_KEY = 'fitness_db_v1';
+let db = {workouts:[], body:[], calories:[]};
+
+function loadDB(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) db = JSON.parse(raw);
+  }catch(e){}
+  render();
+}
+function saveDB(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }catch(e){}
+}
+
+// ── 工具 ──
+function today(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(d){ return d ? d.slice(5).replace('-','/') : ''; }
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ── Tab 切换 ──
+function switchTab(name){
+  const names=['workout','body','calorie','stats'];
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',names[i]===name));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='stats') renderStats();
+  if(name==='calorie') renderCalorieChart();
+}
+
+// ── AI 解析训练 ──
+async function addWorkout(){
+  const raw = document.getElementById('workout-input').value.trim();
+  if(!raw){ showToast('请输入训练内容'); return; }
+  const status = document.getElementById('ai-status');
+  status.innerHTML = '<div class="ai-thinking"><div class="dot-anim"><span>·</span><span>·</span><span>·</span></div><span style="margin-left:6px">AI 解析中</span></div>';
+
+  try{
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:`从健身记录中提取信息，返回纯JSON数组（无markdown），每行一条记录：
+[{"date":"YYYY-MM-DD","muscles":["肌群"],"types":["类型"],"duration":分钟或null,"summary":"简短描述"}]
+
+肌群只用：臀腿/背/胸/肩/腹/手臂/全身/上肢/下肢
+类型只用：力量/有氧/yoga/pilates/zumba/cycle/body_balance/body_combat/body_attack/body_step/跑步/拉伸
+
+今天日期：${today()}，年份为2026年
+多条记录请全部输出。
+
+记录：
+${raw}`}]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim();
+    let parsed = JSON.parse(text);
+    if(!Array.isArray(parsed)) parsed=[parsed];
+    parsed.forEach(p=>{
+      db.workouts.unshift({id:Date.now()+Math.random(),date:p.date||today(),muscles:p.muscles||[],types:p.types||[],duration:p.duration||null,summary:p.summary||raw,raw});
+    });
+    db.workouts.sort((a,b)=>b.date.localeCompare(a.date));
+    saveDB(); status.innerHTML='';
+    document.getElementById('workout-input').value='';
+    render(); showToast('已保存 '+parsed.length+' 条训练记录');
+  }catch(e){
+    status.innerHTML='';
+    db.workouts.unshift({id:Date.now(),date:today(),muscles:[],types:[],summary:raw,raw});
+    saveDB(); render(); showToast('已保存（AI离线，原始记录）');
+  }
+}
+
+// ── 体测 ──
+function showBodyModal(){
+  document.getElementById('b-date').value=today();
+  ['b-weight','b-bf','b-muscle','b-waist','b-hip','b-bmi','b-bmr','b-note'].forEach(id=>{ const el=document.getElementById(id); if(el.type!=='date') el.value=''; });
+  document.getElementById('body-modal').style.display='flex';
+}
+function closeModal(){ document.getElementById('body-modal').style.display='none'; }
+function saveBody(){
+  const w=parseFloat(document.getElementById('b-weight').value)||null;
+  const bf=parseFloat(document.getElementById('b-bf').value)||null;
+  if(!w&&!bf){ showToast('至少填写体重或体脂率'); return; }
+  db.body.push({
+    id:Date.now(),
+    date:document.getElementById('b-date').value||today(),
+    weight:w, bf:bf,
+    muscle:parseFloat(document.getElementById('b-muscle').value)||null,
+    waist:parseFloat(document.getElementById('b-waist').value)||null,
+    hip:parseFloat(document.getElementById('b-hip').value)||null,
+    bmi:parseFloat(document.getElementById('b-bmi').value)||null,
+    bmr:parseFloat(document.getElementById('b-bmr').value)||null,
+    note:document.getElementById('b-note').value||''
+  });
+  db.body.sort((a,b)=>a.date.localeCompare(b.date));
+  saveDB(); closeModal(); render(); showToast('体测数据已保存');
+}
+
+// ── 热量 ──
+function saveCalorie(){
+  const intake=parseFloat(document.getElementById('cal-intake').value)||null;
+  if(!intake){ showToast('请输入摄入热量'); return; }
+  const entry={id:Date.now(),date:today(),intake,burn:parseFloat(document.getElementById('cal-burn').value)||0,note:document.getElementById('cal-note').value||''};
+  const idx=db.calories.findIndex(c=>c.date===today());
+  if(idx>=0) db.calories[idx]=entry; else db.calories.push(entry);
+  db.calories.sort((a,b)=>b.date.localeCompare(a.date));
+  saveDB(); render(); renderCalorieChart(); showToast('热量已记录');
+}
+
+// ── 删除 ──
+function delWorkout(id){ db.workouts=db.workouts.filter(w=>w.id!==id); saveDB(); render(); }
+function delBody(id){ db.body=db.body.filter(b=>b.id!==id); saveDB(); render(); }
+function delCalorie(id){ db.calories=db.calories.filter(c=>c.id!==id); saveDB(); render(); renderCalorieChart(); }
+
+// ── 肌群颜色 ──
+const MCOLOR={'臀腿':'tag-green','背':'tag-blue','胸':'tag-orange','肩':'tag-purple','腹':'tag-red','手臂':'tag-blue','全身':'tag-green','下肢':'tag-green','上肢':'tag-orange','腿':'tag-green','臀':'tag-green'};
+const TCOLOR={'yoga':'tag-purple','cycle':'tag-blue','zumba':'tag-orange','pilates':'tag-purple','body_balance':'tag-blue','body_combat':'tag-red','body_attack':'tag-red','body_step':'tag-orange','跑步':'tag-green','力量':'tag-orange','有氧':'tag-blue'};
+
+// ── 渲染入口 ──
+function render(){
+  const now=new Date();
+  const ym=now.toISOString().slice(0,7);
+  document.getElementById('today-date').textContent=now.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+  document.getElementById('cal-date-label').textContent=now.toLocaleDateString('zh-CN',{month:'long',day:'numeric'});
+  document.getElementById('muscle-month-label').textContent=ym.slice(0,4)+'年'+parseInt(ym.slice(5))+'月';
+
+  const mW=db.workouts.filter(w=>w.date.startsWith(ym));
+  const weeksPassed=Math.max(1,Math.ceil(now.getDate()/7));
+  document.getElementById('m-count').textContent=mW.length;
+  document.getElementById('m-freq').textContent=(mW.length/weeksPassed).toFixed(1);
+
+  const latest=db.body.length?db.body[db.body.length-1]:null;
+  if(latest&&latest.weight){ document.getElementById('m-weight').textContent=latest.weight+'kg'; document.getElementById('m-weight-sub').textContent=fmtDate(latest.date); }
+
+  const tc=db.calories.find(c=>c.date===today());
+  if(tc) document.getElementById('m-cal').textContent=tc.intake;
+
+  renderMuscleGrid(mW,'muscle-grid');
+  renderWeekBars();
+  renderWorkoutLog();
+  renderBodyTab();
+  renderCalorieTab();
+}
+
+function renderMuscleGrid(workouts,elId){
+  const counts={};
+  workouts.forEach(w=>(w.muscles||[]).forEach(m=>{counts[m]=(counts[m]||0)+1}));
+  const el=document.getElementById(elId);
+  if(!Object.keys(counts).length){ el.innerHTML='<div style="grid-column:1/-1" class="empty">暂无训练记录</div>'; return; }
+  el.innerHTML=Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([m,c])=>`<div class="muscle-item"><div class="muscle-count">${c}</div><div class="muscle-name">${m}</div></div>`).join('');
+}
+
+function renderWeekBars(){
+  const el=document.getElementById('week-bars');
+  const now=new Date();
+  const weeks=[];
+  for(let i=3;i>=0;i--){
+    const end=new Date(now); end.setDate(end.getDate()-i*7);
+    const start=new Date(end); start.setDate(start.getDate()-6);
+    const days=[];
+    for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)) days.push(d.toISOString().slice(0,10));
+    weeks.push({label:'第'+(4-i)+'周',cnt:db.workouts.filter(w=>days.includes(w.date)).length});
+  }
+  const max=Math.max(...weeks.map(w=>w.cnt),1);
+  el.innerHTML=weeks.map((w,i)=>`<div class="bar-col"><div class="bar-val">${w.cnt}</div><div class="bar ${i===3?'active':''}" style="height:${Math.max(4,w.cnt/max*80)}px"></div><div class="bar-label">${w.label}</div></div>`).join('');
+}
+
+function renderWorkoutLog(){
+  const el=document.getElementById('workout-log');
+  document.getElementById('log-count-label').textContent='共 '+db.workouts.length+' 条';
+  if(!db.workouts.length){ el.innerHTML='<div class="empty"><div class="empty-icon">🏋️</div>还没有训练记录<br>输入今天的训练内容开始吧</div>'; return; }
+  el.innerHTML=db.workouts.slice(0,60).map(w=>{
+    const tags=[...(w.muscles||[]).map(m=>`<span class="tag ${MCOLOR[m]||'tag-green'}">${m}</span>`),
+                ...(w.types||[]).map(t=>`<span class="tag ${TCOLOR[t]||'tag-blue'}">${t.replace('_',' ')}</span>`),
+                w.duration?`<span class="tag tag-blue">${w.duration}分钟</span>`:''].join('');
+    return `<div class="log-item"><div class="log-date">${fmtDate(w.date)}</div><div class="log-content"><div class="log-title">${w.summary}</div><div class="log-tags">${tags}</div></div><button class="log-del" onclick="delWorkout(${w.id})">×</button></div>`;
+  }).join('');
+}
+
+function renderBodyTab(){
+  const latest=db.body.length?db.body[db.body.length-1]:null;
+  const grid=document.getElementById('body-stats-grid');
+  if(!latest){ grid.innerHTML='<div style="grid-column:1/-1" class="empty"><div class="empty-icon">📊</div>还没有体测数据<br>点击「录入」添加</div>'; }
+  else{
+    const fields=[{k:'weight',l:'体重',u:'kg'},{k:'bf',l:'体脂率',u:'%'},{k:'muscle',l:'骨骼肌',u:'kg'},{k:'bmi',l:'BMI',u:''},{k:'waist',l:'腰围',u:'cm'},{k:'hip',l:'臀围',u:'cm'}];
+    grid.innerHTML=fields.filter(f=>latest[f.k]).map(f=>`<div class="stat-item"><div class="stat-label">${f.l}</div><div class="stat-value">${latest[f.k]}${f.u}</div><div class="stat-date">${fmtDate(latest.date)}</div></div>`).join('');
+  }
+  renderTrendSVG('weight-trend',db.body.filter(b=>b.weight).map(b=>({date:b.date,val:b.weight})),'kg','#3dd68c');
+  renderTrendSVG('bf-trend',db.body.filter(b=>b.bf).map(b=>({date:b.date,val:b.bf})),'%','#c084fc');
+  const log=document.getElementById('body-log');
+  if(!db.body.length){ log.innerHTML='<div class="empty">暂无记录</div>'; return; }
+  log.innerHTML=[...db.body].reverse().map(b=>{
+    const parts=[b.weight&&`${b.weight}kg`,b.bf&&`体脂${b.bf}%`,b.muscle&&`肌肉${b.muscle}kg`].filter(Boolean).join(' · ');
+    return `<div class="log-item"><div class="log-date">${fmtDate(b.date)}</div><div class="log-content"><div class="log-title">${parts}</div>${b.note?`<div class="log-tags"><span class="tag tag-blue">${b.note}</span></div>`:''}</div><button class="log-del" onclick="delBody(${b.id})">×</button></div>`;
+  }).join('');
+}
+
+function renderTrendSVG(elId,data,unit,color){
+  const el=document.getElementById(elId);
+  if(data.length<2){ el.innerHTML='<div class="empty" style="padding:16px">至少需要2条记录才能显示趋势</div>'; return; }
+  const W=660,H=80,pad=40;
+  const vals=data.map(d=>d.val);
+  const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1;
+  const pts=data.map((d,i)=>({x:pad+(i/(data.length-1))*(W-pad*2),y:H-12-((d.val-min)/range)*(H-28),d}));
+  const path=pts.map((p,i)=>(i===0?`M${p.x},${p.y}`:`L${p.x},${p.y}`)).join(' ');
+  const area=pts.map((p,i)=>(i===0?`M${p.x},${H} L${p.x},${p.y}`:`L${p.x},${p.y}`)).join(' ')+` L${pts[pts.length-1].x},${H} Z`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%"><defs><linearGradient id="g${elId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity=".2"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient></defs><path d="${area}" fill="url(#g${elId})"/><path d="${path}" stroke="${color}" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>${pts.map(p=>`<circle cx="${p.x}" cy="${p.y}" r="3" fill="${color}"/><text x="${p.x}" y="${p.y-7}" text-anchor="middle" font-size="10" fill="${color}">${p.d.val}${unit}</text>`).join('')}<text x="${pts[0].x}" y="${H-1}" text-anchor="middle" font-size="9" fill="#555">${fmtDate(pts[0].d.date)}</text><text x="${pts[pts.length-1].x}" y="${H-1}" text-anchor="middle" font-size="9" fill="#555">${fmtDate(pts[pts.length-1].d.date)}</text></svg>`;
+}
+
+function renderCalorieTab(){
+  const tc=db.calories.find(c=>c.date===today());
+  const max=2500;
+  if(tc){
+    document.getElementById('cal-intake').value=tc.intake||'';
+    document.getElementById('cal-burn').value=tc.burn||'';
+    document.getElementById('cal-note').value=tc.note||'';
+    const gap=(tc.intake||0)-(tc.burn||0);
+    document.getElementById('intake-val').textContent=(tc.intake||0)+' kcal';
+    document.getElementById('burn-val').textContent=(tc.burn||0)+' kcal';
+    document.getElementById('gap-val').textContent=(gap>0?'+':'')+gap+' kcal';
+    document.getElementById('intake-bar').style.width=Math.min(100,(tc.intake||0)/max*100)+'%';
+    document.getElementById('burn-bar').style.width=Math.min(100,(tc.burn||0)/max*100)+'%';
+    document.getElementById('gap-bar').style.width=Math.min(100,Math.abs(gap)/max*100)+'%';
+  }
+  const log=document.getElementById('calorie-log');
+  if(!db.calories.length){ log.innerHTML='<div class="empty">暂无热量记录</div>'; return; }
+  log.innerHTML=db.calories.slice(0,30).map(c=>{
+    const gap=(c.intake||0)-(c.burn||0);
+    return `<div class="log-item"><div class="log-date">${fmtDate(c.date)}</div><div class="log-content"><div class="log-title">摄入 ${c.intake||0} · 消耗 ${c.burn||0} · 缺口 ${gap>0?'+':''}${gap}</div>${c.note?`<div class="log-tags"><span class="tag tag-blue">${c.note}</span></div>`:''}</div><button class="log-del" onclick="delCalorie(${c.id})">×</button></div>`;
+  }).join('');
+}
+
+let calorieChart=null;
+function renderCalorieChart(){
+  const canvas=document.getElementById('calorie-chart');
+  if(!canvas) return;
+  const days=[];
+  for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(d.toISOString().slice(0,10)); }
+  const intakes=days.map(d=>{const c=db.calories.find(x=>x.date===d);return c?c.intake:0;});
+  const burns=days.map(d=>{const c=db.calories.find(x=>x.date===d);return c?c.burn:0;});
+  if(calorieChart) calorieChart.destroy();
+  calorieChart=new Chart(canvas,{type:'bar',data:{labels:days.map(d=>fmtDate(d)),datasets:[{label:'摄入',data:intakes,backgroundColor:'#1a4a32',borderColor:'#3dd68c',borderWidth:1},{label:'消耗',data:burns,backgroundColor:'#4a2510',borderColor:'#fb923c',borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#666',font:{size:11}}},y:{ticks:{color:'#666'},grid:{color:'rgba(255,255,255,.05)'}}}}});
+}
+
+let monthlyChart=null;
+function renderStats(){
+  const year=new Date().getFullYear().toString();
+  const yW=db.workouts.filter(w=>w.date.startsWith(year));
+  const now=new Date();
+  document.getElementById('year-summary').innerHTML=`
+    <div class="metric-card green"><div class="label">年度训练</div><div class="value">${yW.length}</div><div class="sub">次</div></div>
+    <div class="metric-card blue"><div class="label">月均频率</div><div class="value">${(yW.length/Math.max(1,now.getMonth()+1)).toFixed(1)}</div><div class="sub">次/月</div></div>
+    <div class="metric-card orange"><div class="label">体测次数</div><div class="value">${db.body.length}</div></div>
+    <div class="metric-card purple"><div class="label">记录天数</div><div class="value">${new Set(yW.map(w=>w.date)).size}</div></div>`;
+  renderMuscleGrid(yW,'year-muscle-grid');
+  const mCounts=['01','02','03','04','05','06','07','08','09','10','11','12'].map(m=>db.workouts.filter(w=>w.date.startsWith(year+'-'+m)).length);
+  if(monthlyChart) monthlyChart.destroy();
+  monthlyChart=new Chart(document.getElementById('monthly-chart'),{type:'bar',data:{labels:['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],datasets:[{label:'训练次数',data:mCounts,backgroundColor:'#1a4a32',borderColor:'#3dd68c',borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{autoSkip:false,color:'#666',font:{size:10}}},y:{ticks:{color:'#666',stepSize:1},grid:{color:'rgba(255,255,255,.05)'}}}}});
+}
+
+loadDB();
+</script>
+</body>
+</html>
